@@ -54,13 +54,19 @@ function updateDateHeader() {
 // Inicializar info do servidor e IP
 async function initAppInfo() {
   try {
+    const isCloud = !['localhost', '127.0.0.1'].includes(window.location.hostname) && !window.location.hostname.startsWith('192.168.');
+    if (isCloud) {
+      localIpBadge.textContent = window.location.origin;
+    } else {
+      const res = await fetch('/api/info');
+      const data = await res.json();
+      if (data.local_ip) {
+        localIpBadge.textContent = `http://${data.local_ip}:8000`;
+      }
+    }
     const res = await fetch('/api/info');
     const data = await res.json();
-    if (data.local_ip) {
-      localIpBadge.textContent = `http://${data.local_ip}:8000`;
-    }
     if (!data.has_api_key) {
-      // Mostrar modal de definições caso ainda não tenha chave
       setTimeout(() => {
         openModal(settingsModal);
       }, 500);
