@@ -33,6 +33,7 @@ const closeSettingsBtn = document.getElementById('close-settings-btn');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
 const copySummaryBtn = document.getElementById('copy-summary-btn');
 const apiKeyInput = document.getElementById('api-key-input');
+const modelSelect = document.getElementById('model-select');
 const summaryContent = document.getElementById('summary-content');
 const localIpBadge = document.getElementById('local-ip-badge');
 
@@ -57,15 +58,19 @@ async function initAppInfo() {
     const isCloud = !['localhost', '127.0.0.1'].includes(window.location.hostname) && !window.location.hostname.startsWith('192.168.');
     if (isCloud) {
       localIpBadge.textContent = window.location.origin;
-    } else {
-      const res = await fetch('/api/info');
-      const data = await res.json();
-      if (data.local_ip) {
-        localIpBadge.textContent = `http://${data.local_ip}:8000`;
-      }
     }
+
     const res = await fetch('/api/info');
     const data = await res.json();
+    
+    if (!isCloud && data.local_ip) {
+      localIpBadge.textContent = `http://${data.local_ip}:8000`;
+    }
+
+    if (data.current_model && modelSelect) {
+      modelSelect.value = data.current_model;
+    }
+
     if (!data.has_api_key) {
       setTimeout(() => {
         openModal(settingsModal);
@@ -433,22 +438,25 @@ function setupEventListeners() {
 
   saveSettingsBtn.addEventListener('click', async () => {
     const key = apiKeyInput.value.trim();
-    if (!key) {
-      alert('Insere a chave do Gemini.');
-      return;
+    const model = modelSelect ? modelSelect.value : 'gemini-2.5-flash';
+
+    const payload = { gemini_model: model };
+    if (key) {
+      payload.gemini_api_key = key;
     }
+
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gemini_api_key: key }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.message);
+        alert(data.message || 'Definições guardadas com sucesso!');
         closeModal(settingsModal);
       } else {
-        alert(data.detail || 'Erro ao guardar chave.');
+        alert(data.detail || 'Erro ao guardar definições.');
       }
     } catch {
       alert('Erro de ligação.');

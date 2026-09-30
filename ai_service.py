@@ -10,7 +10,6 @@ load_dotenv()
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 
 def get_api_key() -> Optional[str]:
-    # Check config.json first, then environment variable
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -21,13 +20,27 @@ def get_api_key() -> Optional[str]:
             pass
     return os.getenv("GEMINI_API_KEY")
 
-def save_api_key(api_key: str) -> bool:
+def get_model_name() -> str:
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data.get("gemini_model"):
+                    return data["gemini_model"].strip()
+        except Exception:
+            pass
+    return os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+def save_settings(api_key: Optional[str] = None, model_name: Optional[str] = None) -> bool:
     try:
         data = {}
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        data["gemini_api_key"] = api_key.strip()
+        if api_key is not None:
+            data["gemini_api_key"] = api_key.strip()
+        if model_name is not None:
+            data["gemini_model"] = model_name.strip()
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         return True
@@ -75,9 +88,12 @@ Analisa a gravação de áudio fornecida:
     elif clean_mime in ["audio/wav", "audio/x-wav"]:
         clean_mime = "audio/wav"
 
+    primary_model = get_model_name()
+    fallback_model = "gemini-2.0-flash" if primary_model != "gemini-2.0-flash" else "gemini-1.5-flash"
+
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=primary_model,
             contents=[
                 types.Part.from_bytes(data=audio_bytes, mime_type=clean_mime),
                 prompt
@@ -92,10 +108,9 @@ Analisa a gravação de áudio fornecida:
         result_json = json.loads(response.text)
         return result_json
     except Exception as e:
-        # Tentar com gemini-2.0-flash caso o modelo 2.5 não esteja disponível no tier
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model=fallback_model,
                 contents=[
                     types.Part.from_bytes(data=audio_bytes, mime_type=clean_mime),
                     prompt
@@ -108,7 +123,7 @@ Analisa a gravação de áudio fornecida:
             )
             return json.loads(response.text)
         except Exception as e2:
-            raise RuntimeError(f"Erro ao processar áudio com Gemini: {str(e2)}")
+            raise RuntimeError(f"Erro ao processar áudio com Gemini ({primary_model}): {str(e2)}")
 
 # Geocoding cache
 _geo_cache: Dict[Tuple[float, float], str] = {}
@@ -182,8 +197,9 @@ Formato pretendido:
 (se houver algo relevante a salientar)
 """
     try:
+        model_name = get_model_name()
         resp = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model_name,
             contents=prompt
         )
         return resp.text

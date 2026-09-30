@@ -49,7 +49,8 @@ def get_local_ip() -> str:
         return "127.0.0.1"
 
 class SettingsPayload(BaseModel):
-    gemini_api_key: str
+    gemini_api_key: Optional[str] = None
+    gemini_model: Optional[str] = None
 
 class SummaryPayload(BaseModel):
     date_str: str
@@ -64,8 +65,10 @@ async def serve_index():
 @app.get("/api/info")
 async def get_app_info():
     api_key = ai_service.get_api_key()
+    model = ai_service.get_model_name()
     return {
         "has_api_key": bool(api_key),
+        "current_model": model,
         "local_ip": get_local_ip(),
         "server_time": datetime.now().strftime("%H:%M"),
         "server_date": datetime.now().strftime("%Y-%m-%d")
@@ -73,12 +76,12 @@ async def get_app_info():
 
 @app.post("/api/settings")
 async def update_settings(payload: SettingsPayload):
-    if not payload.gemini_api_key.strip():
-        raise HTTPException(status_code=400, detail="A chave de API não pode estar vazia.")
-    success = ai_service.save_api_key(payload.gemini_api_key)
+    if not payload.gemini_api_key and not payload.gemini_model:
+        raise HTTPException(status_code=400, detail="Nenhum parâmetro para atualizar.")
+    success = ai_service.save_settings(api_key=payload.gemini_api_key, model_name=payload.gemini_model)
     if not success:
         raise HTTPException(status_code=500, detail="Erro ao guardar configuração.")
-    return {"status": "ok", "message": "Chave de API do Gemini guardada com sucesso!"}
+    return {"status": "ok", "message": "Definições guardadas com sucesso!"}
 
 @app.get("/api/notes")
 async def list_notes(date: Optional[str] = None):
