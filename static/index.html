@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Voz & Horas">
+  <meta name="theme-color" content="#0f172a">
+  <title>Voz & Horas | Gestor Diário</title>
+  
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/style.css">
+  
+  <!-- Fontes Google & Ícones FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="header-left">
+          <div class="logo-badge">
+            <i class="fa-solid fa-microphone-lines"></i>
+          </div>
+          <div>
+            <h1 class="app-title">Voz & Horas</h1>
+            <p class="app-subtitle" id="current-date-display">A carregar data...</p>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button id="btn-summary" class="icon-btn" title="Gerar Resumo Diário">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </button>
+          <button id="btn-settings" class="icon-btn" title="Definições">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Date Switcher & GPS Status Bar -->
+      <div class="status-subbar">
+        <div class="date-selector-wrapper">
+          <i class="fa-regular fa-calendar"></i>
+          <select id="date-select" class="date-select">
+            <option value="">Hoje</option>
+          </select>
+        </div>
+
+        <div id="gps-status" class="gps-status ready">
+          <i class="fa-solid fa-location-crosshairs"></i>
+          <span id="gps-text">GPS Ativo</span>
+        </div>
+      </div>
+
+      <!-- Categories Filter Tags -->
+      <div class="filter-chips-container" id="filter-chips">
+        <button class="chip active" data-theme="all">Todos (<span id="count-all">0</span>)</button>
+        <button class="chip" data-theme="Jardinagem">🌿 Jardim</button>
+        <button class="chip" data-theme="Piscinas">🏊 Piscina</button>
+        <button class="chip" data-theme="Compras & Material">🛒 Compras</button>
+        <button class="chip" data-theme="Contacto / Cliente">👤 Cliente</button>
+      </div>
+    </header>
+
+    <!-- Main Timeline Content -->
+    <main class="timeline-container" id="timeline-container">
+      <div id="loading-spinner" class="spinner-state hidden">
+        <div class="loader"></div>
+        <p>A carregar notas...</p>
+      </div>
+
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">
+          <i class="fa-solid fa-microphone"></i>
+        </div>
+        <h3>Sem registos para este dia</h3>
+        <p>Toca no botão vermelho em baixo para gravar uma nota de voz. A hora e o local serão registados automaticamente!</p>
+      </div>
+
+      <!-- Feed com os blocos de horas -->
+      <div id="timeline-feed" class="timeline-feed"></div>
+    </main>
+
+    <!-- Bottom Recording Deck -->
+    <footer class="record-footer">
+      <div class="record-wrapper">
+        <div id="recording-banner" class="recording-banner hidden">
+          <span class="pulsing-dot"></span>
+          <span id="recording-timer">00:00</span>
+          <span class="recording-tip">A gravar... Toca para parar</span>
+        </div>
+
+        <button id="record-btn" class="record-button" aria-label="Gravar Nota de Voz">
+          <div class="record-glow"></div>
+          <div class="record-icon-inner">
+            <i class="fa-solid fa-microphone" id="record-icon"></i>
+          </div>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Processing Overlay Modal -->
+    <div id="processing-modal" class="modal-backdrop hidden">
+      <div class="modal-card processing-card">
+        <div class="ai-sparkle-animation">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <h3 id="processing-title">A transcrever com IA...</h3>
+        <p id="processing-desc">A organizar o tema, tarefas e localização por hora.</p>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Summary Modal -->
+    <div id="summary-modal" class="modal-backdrop hidden">
+      <div class="modal-card summary-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <i class="fa-solid fa-sparkles text-emerald"></i>
+            <h3>Resumo Diário Inteligente</h3>
+          </div>
+          <button class="modal-close" id="close-summary-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="summary-content">
+          <div class="loader"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="copy-summary-btn" class="btn btn-primary">
+            <i class="fa-solid fa-copy"></i> Copiar Resumo
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-gear"></i> Definições</h3>
+          <button class="modal-close" id="close-settings-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="api-key-input">Chave de API do Gemini (Google AI Studio)</label>
+            <input type="password" id="api-key-input" placeholder="AIzaSy..." class="form-input">
+            <small class="form-hint">Obtém uma chave gratuita em <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>.</small>
+          </div>
+
+          <div class="info-box">
+            <p><strong>Acesso no iPhone:</strong></p>
+            <p>Liga o iPhone à mesma rede Wi-Fi e acede ao endereço:</p>
+            <code id="local-ip-badge">http://...</code>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="save-settings-btn" class="btn btn-primary">Guardar Chave</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
